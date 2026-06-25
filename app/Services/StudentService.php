@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Log;
 
 class StudentService
 {
+    // Silakan sesuaikan URL domain aplikasi PHP Native Anda di sini
+    protected $externalBaseUrl = 'https://datasiswa-app.com';
+    protected $apiKey = 'TUsmekisa1968';
+
     public function getAll()
     {
         return Student::orderBy('name', 'asc')->get();
@@ -30,7 +34,66 @@ class StudentService
     }
 
     /**
-     * Logika untuk Tombol Sinkronisasi ke Aplikasi Sebelah Berdasarkan NIS
+     * 1. FITUR TARIK DATA: Cari data santri ke aplikasi PHP Native Sebelah (REAL API)
+     */
+    public function searchExternalStudents($keyword)
+    {
+        try {
+            // Tembak API Native dengan Header X-API-KEY
+            $response = Http::withHeaders([
+                'X-API-KEY' => $this->apiKey
+            ])->get($this->externalBaseUrl . '/apiSearchSiswa', [
+                'q' => $keyword
+            ]);
+
+            if ($response->successful() && $response->json()['status'] === 'success') {
+                return $response->json()['data'];
+            }
+
+            return [];
+        } catch (\Exception $e) {
+            throw new \Exception('Gagal terhubung ke aplikasi pusat: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 2. FITUR TARIK DATA: Eksekusi simpan rombongan data yang dicentang frontend
+     */
+    public function pullSelectedStudents(array $checkedStudents)
+    {
+        $insertedCount = 0;
+        $updatedCount = 0;
+
+        foreach ($checkedStudents as $data) {
+            $student = Student::updateOrCreate(
+                ['nis' => $data['nis']],
+                [
+                    'name'           => $data['name'],
+                    'birth_place'    => $data['birth_place'] ?? null,
+                    'birth_date'     => $data['birth_date'] ?? null,
+                    'address'        => $data['address'] ?? null,
+                    'guardian_name'  => $data['guardian_name'] ?? null,
+                    'guardian_phone' => $data['guardian_phone'] ?? null,
+                    'rombel'         => $data['rombel'] ?? null,
+                    'status'         => 'aktif', // Default langsung aktif saat ditarik
+                ]
+            );
+
+            if ($student->wasRecentlyCreated) {
+                $insertedCount++;
+            } else {
+                $updatedCount++;
+            }
+        }
+
+        return [
+            'inserted' => $insertedCount,
+            'updated' => $updatedCount
+        ];
+    }
+
+    /**
+     * 3. FITUR SYNC SATUAN: Memperbarui data siswa yang sudah ada di database Laravel
      */
     public function syncWithExternal(Student $student)
     {
@@ -39,41 +102,33 @@ class StudentService
         }
 
         try {
-            // URL API Aplikasi Data Siswa Pusat/Sebelah
-            $externalUrl = 'https://api-datasiswa-sebelah.com/api/v1/get-student/' . $student->nis;
-
-            /* // --- KODE INTEGRASI ASLI (Aktifkan jika API sebelah sudah siap digunakan) ---
+            // Tembak API Detail milik PHP Native
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer TOKEN_RAHASIA_APLIKASI_SEBELAH'
-            ])->get($externalUrl);
-
-            if ($response->successful()) {
-                $externalData = $response->json()['data'];
-                
-                $student->update([
-                    'name'           => $externalData['nama_lengkap'],
-                    'birth_place'    => $externalData['tempat_lahir'],
-                    'birth_date'     => $externalData['tanggal_lahir'],
-                    'address'        => $externalData['alamat_tinggal'],
-                    'guardian_name'  => $externalData['nama_wali'],
-                    'guardian_phone' => $externalData['no_hp_wali'],
-                    'rombel'         => $externalData['nama_kelas_sekarang'],
-                    'status'         => $externalData['is_active'] == 1 ? 'aktif' : 'keluar',
-                ]);
-                
-                return $student;
-            }
-            throw new \Exception('Gagal mengambil data dari aplikasi pusat.');
-            */
-
-            // --- SIMULASI MOCK DATA (Untuk Keperluan Testing Postman Saat Ini) ---
-            $student->update([
-                'name' => $student->name . ' (Synced)',
-                'rombel' => 'Rombel Updated by Sync',
-                'status' => 'aktif'
+                'X-API-KEY' => $this->apiKey
+            ])->get($this->externalBaseUrl . '/apiDetailSiswa', [
+                'nis' => $student->nis
             ]);
 
-            return $student;
+            if ($response->successful() && $response->json()['status'] === 'success') {
+                $externalData = $response->json()['data'];
+
+                if ($externalData) {
+                    $student->update([
+                        'name'           => $externalData['name'],
+                        'birth_place'    => $externalData['birth_place'],
+                        'birth_date'     => $externalData['birth_date'],
+                        'address'        => $externalData['address'],
+                        'guardian_name'  => $externalData['guardian_name'],
+                        'guardian_phone' => $externalData['guardian_phone'],
+                        'rombel'         => $externalData['rombel'],
+                        // status tetap dipertahankan sesuai kondisi lokal database laravel Anda
+                    ]);
+
+                    return $student;
+                }
+            }
+
+            throw new \Exception('Data siswa tidak ditemukan di aplikasi pusat.');
         } catch (\Exception $e) {
             Log::error('Sync Student Error: ' . $e->getMessage());
             throw new \Exception('Koneksi ke aplikasi pusat terganggu: ' . $e->getMessage());
