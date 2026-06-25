@@ -42,7 +42,7 @@ class StudentService
             // Tembak API Native dengan Header X-API-KEY
             $response = Http::withHeaders([
                 'X-API-KEY' => $this->apiKey
-            ])->get($this->externalBaseUrl . '/apiSearchSiswa', [
+            ])->get($this->externalBaseUrl . '/siswa/apiSearchSiswa', [
                 'q' => $keyword
             ]);
 
