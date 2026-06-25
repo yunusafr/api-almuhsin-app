@@ -63,23 +63,62 @@ class StudentController extends Controller
         ]);
     }
 
+
+
     /**
-     * Endpoint khusus pemicu tombol Sync di Frontend
+     * Endpoint untuk mencari data santri di aplikasi sebelah
      */
-    public function sync(Student $student)
+    public function searchExternal(\Illuminate\Http\Request $request)
+    {
+        $request->validate(['q' => 'required|string']);
+
+        try {
+            $results = $this->service->searchExternalStudents($request->q);
+            return response()->json([
+                'success' => true,
+                'data' => $results
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Endpoint untuk mengeksekusi rombongan santri yang dicentang
+     */
+    public function pullExternal(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'students' => 'required|array',
+            'students.*.nis' => 'required|string',
+            'students.*.name' => 'required|string'
+        ]);
+
+        try {
+            $resultCount = $this->service->pullSelectedStudents($request->students);
+            return response()->json([
+                'success' => true,
+                'message' => "Proses tarik data selesai. {$resultCount['inserted']} santri baru ditambahkan, {$resultCount['updated']} santri diperbarui."
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Endpoint untuk tombol Sync per-satu siswa
+     */
+    public function sync(\App\Models\Student $student)
     {
         try {
-            $syncedStudent = $this->service->syncWithExternal($student);
+            $updatedStudent = $this->service->syncWithExternal($student);
             return response()->json([
                 'success' => true,
                 'message' => 'Data santri berhasil disinkronkan dengan aplikasi pusat',
-                'data' => new StudentResource($syncedStudent)
+                'data' => $updatedStudent
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 400);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
 }
