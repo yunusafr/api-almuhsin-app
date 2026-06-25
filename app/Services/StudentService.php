@@ -46,18 +46,19 @@ class StudentService
                 'q' => $keyword
             ]);
 
-            // --- TAMBAHAN KODE UNTUK DEBUGGING ---
-            // Jika response gagal di-parse menjadi JSON, kita lempar isi aslinya!
-            if (is_null($response->json())) {
-                throw new \Exception("Response sebelah bukan JSON! Isinya: " . $response->body());
-            }
-            // -------------------------------------
+            // // --- TAMBAHAN KODE UNTUK DEBUGGING ---
+            // // Jika response gagal di-parse menjadi JSON, kita lempar isi aslinya!
+            // if (is_null($response->json())) {
+            //     throw new \Exception("Response sebelah bukan JSON! Isinya: " . $response->body());
+            // }
+            // // -------------------------------------
 
-            if ($response->successful() && $response->json()['status'] === 'success') {
-                return $response->json()['data'];
-            }
+            // if ($response->successful() && $response->json()['status'] === 'success') {
+            //     return $response->json()['data'];
+            // }
 
-            return [];
+            // return [];
+            return $response->json();
         } catch (\Exception $e) {
             throw new \Exception('Gagal terhubung ke aplikasi pusat: ' . $e->getMessage());
         }
