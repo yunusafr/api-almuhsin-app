@@ -46,6 +46,13 @@ class StudentService
                 'q' => $keyword
             ]);
 
+            // --- TAMBAHAN KODE UNTUK DEBUGGING ---
+            // Jika response gagal di-parse menjadi JSON, kita lempar isi aslinya!
+            if (is_null($response->json())) {
+                throw new \Exception("Response sebelah bukan JSON! Isinya: " . $response->body());
+            }
+            // -------------------------------------
+
             if ($response->successful() && $response->json()['status'] === 'success') {
                 return $response->json()['data'];
             }
