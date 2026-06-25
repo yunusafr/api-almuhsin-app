@@ -19,7 +19,9 @@ Route::prefix('v1')->group(function () {
         Route::middleware(['role:Super Admin'])->group(function () {
             Route::apiResource('academic-years', AcademicYearController::class);
 
-            Route::post('students/{student}/sync', [StudentController::class, 'sync']); // Tombol Sync
+            Route::get('students/external-search', [StudentController::class, 'searchExternal']);
+            Route::post('students/external-pull', [StudentController::class, 'pullExternal']);
+            Route::post('students/{student}/sync', [StudentController::class, 'sync']);
             Route::apiResource('students', StudentController::class); // CRUD Manual
 
         });
