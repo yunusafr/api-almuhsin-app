@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 class StudentService
 {
     // Silakan sesuaikan URL domain aplikasi PHP Native Anda di sini
-    protected $externalBaseUrl = 'https://datasiswa-app.com';
+    protected $externalBaseUrl = 'https://induk.ingintau.my.id';
     protected $apiKey = 'TUsmekisa1968';
 
     public function getAll()
