@@ -106,19 +106,50 @@ class StudentController extends Controller
     }
 
     /**
-     * Endpoint untuk tombol Sync per-satu siswa
+     * Endpoint untuk Sinkronisasi Semua Data Siswa Berdasarkan NIS
      */
-    public function sync(\App\Models\Student $student)
+    public function sync(\Illuminate\Http\Request $request)
     {
         try {
-            // Kita panggil service untuk menyinkronkan siswa ini
-            $updatedStudent = $this->service->syncWithExternal($student);
+            // Ambil semua data siswa yang saat ini ada di database Laravel
+            $localStudents = \App\Models\Student::all();
+
+            if ($localStudents->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada data siswa di database lokal untuk disinkronkan.'
+                ], 400);
+            }
+
+            $updatedCount = 0;
+
+            // Looping setiap siswa lokal untuk dicari data terbarunya di aplikasi sebelah
+            foreach ($localStudents as $student) {
+                // Tembak API eksternal menggunakan NIS siswa tersebut
+                $externalData = $this->service->searchExternalStudents($student->nis);
+
+                // Jika data ditemukan di aplikasi sebelah
+                if (!empty($externalData) && isset($externalData[0])) {
+                    $freshData = $externalData[0]; // Ambil baris pertama hasil pencarian
+
+                    // Update data di database Laravel dengan data terbaru dari pusat
+                    $student->update([
+                        'name'           => $freshData['name'],
+                        'birth_place'    => $freshData['birth_place'],
+                        'birth_date'     => $freshData['birth_date'],
+                        'address'        => $freshData['address'],
+                        'guardian_name'  => $freshData['guardian_name'],
+                        'guardian_phone' => $freshData['guardian_phone'],
+                        'rombel'         => $freshData['rombel'],
+                    ]);
+
+                    $updatedCount++;
+                }
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Data santri berhasil disinkronkan dengan aplikasi pusat',
-                // Gunakan StudentResource agar format output sama persis dengan CRUD lainnya
-                'data' => new \App\Http\Resources\StudentResource($updatedStudent)
+                'message' => "Proses sinkronisasi selesai. Berhasil memperbarui {$updatedCount} data siswa berdasarkan data pusat terbaru."
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
