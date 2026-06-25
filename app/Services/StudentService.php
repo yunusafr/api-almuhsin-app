@@ -39,15 +39,20 @@ class StudentService
     public function searchExternalStudents($keyword)
     {
         try {
-            // Kita gabungkan langsung ?q= di ujung URL dan gunakan urlencode 
-            // agar terbaca sempurna oleh PHP Native tanpa terganggu .htaccess
             $url = $this->externalBaseUrl . '/Siswa/apiSearchSiswa?q=' . urlencode($keyword);
 
             $response = Http::withHeaders([
                 'X-API-KEY' => $this->apiKey
-            ])->get($url); // Kosongkan array parameter di sini karena sudah dipindah ke atas
+            ])->get($url);
 
-            return $response->json();
+            $responseData = $response->json();
+
+            // Kita ambil isi array datanya saja
+            if ($response->successful() && isset($responseData['status']) && $responseData['status'] === 'success') {
+                return $responseData['data'];
+            }
+
+            return [];
         } catch (\Exception $e) {
             throw new \Exception('Gagal terhubung ke aplikasi pusat: ' . $e->getMessage());
         }
