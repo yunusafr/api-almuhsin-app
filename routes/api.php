@@ -21,7 +21,7 @@ Route::prefix('v1')->group(function () {
 
             Route::get('students/external-search', [StudentController::class, 'searchExternal']);
             Route::post('students/external-pull', [StudentController::class, 'pullExternal']);
-            Route::post('students/{student}/sync', [StudentController::class, 'sync']);
+            Route::post('students/external-sync', [StudentController::class, 'sync']);
             Route::apiResource('students', StudentController::class); // CRUD Manual
 
         });
