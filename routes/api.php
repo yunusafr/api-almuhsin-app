@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\AcademicYearController;
 use App\Http\Controllers\API\StudentController;
+use App\Http\Controllers\API\ClassRoomController;
 
 Route::prefix('v1')->group(function () {
     // Public routes
@@ -24,6 +25,8 @@ Route::prefix('v1')->group(function () {
             Route::post('students/external-sync', [StudentController::class, 'sync']);
             Route::apiResource('students', StudentController::class); // CRUD Manual
 
+
+            Route::apiResource('classes', ClassRoomController::class)->parameters(['classes' => 'classRoom']);
         });
     });
 });
