@@ -10,7 +10,7 @@ Route::prefix('v1')->group(function () {
     // Public routes
     Route::post('/login', [AuthController::class, 'login']);
 
-    // Protected routes (Harus bawa Bearer Token)
+    // Protected routes (Use Bearer Token)
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
@@ -18,14 +18,16 @@ Route::prefix('v1')->group(function () {
 
         // --- AREA SUPER ADMIN ---
         Route::middleware(['role:Super Admin'])->group(function () {
+            // Academic Years Routes
             Route::apiResource('academic-years', AcademicYearController::class);
 
+            // Student Routes
             Route::get('students/external-search', [StudentController::class, 'searchExternal']);
             Route::post('students/external-pull', [StudentController::class, 'pullExternal']);
             Route::post('students/external-sync', [StudentController::class, 'sync']);
             Route::apiResource('students', StudentController::class); // CRUD Manual
 
-
+            // Class Routes
             Route::apiResource('classes', ClassRoomController::class)->parameters(['classes' => 'classRoom']);
         });
     });
