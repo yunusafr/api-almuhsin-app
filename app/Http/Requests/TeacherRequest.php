@@ -13,13 +13,19 @@ class TeacherRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email', // Wajib untuk akun login
             'gender' => 'required|in:L,P',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
         ];
+
+        // 👇 VALIDASI KHUSUS: Jika method-nya POST (Tambah Data), baru email diwajibkan
+        if ($this->isMethod('post')) {
+            $rules['email'] = 'required|email|unique:users,email';
+        }
+
+        return $rules;
     }
 
     public function messages(): array
