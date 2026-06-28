@@ -19,6 +19,8 @@ Route::prefix('v1')->group(function () {
         // --- AREA SUPER ADMIN ---
         Route::middleware(['role:Super Admin'])->group(function () {
             // Academic Years Routes
+
+            Route::get('academic-years/active', [AcademicYearController::class, 'getActive']);
             Route::apiResource('academic-years', AcademicYearController::class);
 
             // Student Routes
