@@ -17,15 +17,19 @@ class StudentController extends Controller
         $this->service = $service;
     }
 
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $students = $this->service->getAll();
+        // Tangkap query parameter 'status' dari URL
+        $status = $request->query('status');
+
+        // Lempar variabel status ke dalam service
+        $students = $this->service->getAll($status);
+
         return response()->json([
             'success' => true,
             'data' => StudentResource::collection($students)
         ]);
     }
-
     public function store(StudentRequest $request)
     {
         $student = $this->service->create($request->validated());
@@ -141,6 +145,7 @@ class StudentController extends Controller
                         'guardian_name'  => $freshData['guardian_name'],
                         'guardian_phone' => $freshData['guardian_phone'],
                         'rombel'         => $freshData['rombel'],
+                        'tingkat'           => $freshData['tingkat'],
                     ]);
 
                     $updatedCount++;

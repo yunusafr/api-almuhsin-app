@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('guardian_name')->nullable();
             $table->string('guardian_phone')->nullable();
             $table->string('rombel')->nullable(); // Rombongan Belajar / Kelas Sementara
+            $table->string('tingkat')->nullable()->after('rombel');
             $table->string('status')->default('aktif'); // Status: aktif, keluar, lulus, mutasi
             $table->timestamps();
         });

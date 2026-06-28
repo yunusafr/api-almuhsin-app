@@ -25,6 +25,7 @@ class StudentRequest extends FormRequest
             'guardian_name' => ['nullable', 'string', 'max:255'],
             'guardian_phone' => ['nullable', 'string', 'max:30'],
             'rombel' => ['nullable', 'string', 'max:100'],
+            'tingkat' => ['required', 'string', 'max:50'],
             'status' => ['required', 'string', 'max:50'],
 
             // NIS bersifat unik, namun abaikan data milik santri itu sendiri jika sedang proses UPDATE

@@ -19,6 +19,7 @@ class Student extends Model
         'guardian_name',
         'guardian_phone',
         'rombel',
+        'tingkat',
         'status'
     ];
 }

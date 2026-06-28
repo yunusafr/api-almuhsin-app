@@ -12,9 +12,18 @@ class StudentService
     protected $externalBaseUrl = 'https://induk.ingintau.my.id';
     protected $apiKey = 'TUsmekisa1968';
 
-    public function getAll()
+    public function getAll($status = null)
     {
-        return Student::orderBy('name', 'asc')->get();
+        // Panggil query builder dari model Student
+        $query = Student::query();
+
+        // Jika variabel $status ada isinya (misal: 'aktif'), tambahkan filter where
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        // Lanjutkan dengan order by dan get
+        return $query->orderBy('name', 'asc')->get();
     }
 
     public function create(array $data)

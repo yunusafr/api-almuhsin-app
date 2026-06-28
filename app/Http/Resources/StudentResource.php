@@ -19,6 +19,7 @@ class StudentResource extends JsonResource
             'guardian_name' => $this->guardian_name,
             'guardian_phone' => $this->guardian_phone,
             'rombel' => $this->rombel,
+            'tingkat' => $this->tingkat,
             'status' => $this->status,
             'created_at' => $this->created_at ? $this->created_at->toIso8601String() : null,
             'updated_at' => $this->updated_at ? $this->updated_at->toIso8601String() : null,
