@@ -54,6 +54,8 @@ class StudentService
                 'X-API-KEY' => $this->apiKey
             ])->get($url);
 
+            dd($response->json());
+
             $responseData = $response->json();
 
             // Kita ambil isi array datanya saja
