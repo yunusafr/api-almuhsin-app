@@ -5,6 +5,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\AcademicYearController;
 use App\Http\Controllers\API\StudentController;
 use App\Http\Controllers\API\ClassRoomController;
+use App\Http\Controllers\API\ClassEnrollmentController;
 
 Route::prefix('v1')->group(function () {
     // Public routes
@@ -31,6 +32,7 @@ Route::prefix('v1')->group(function () {
 
             // Class Routes
             Route::apiResource('classes', ClassRoomController::class)->parameters(['classes' => 'classRoom']);
+            Route::apiResource('enrollments', ClassEnrollmentController::class);
         });
     });
 });
