@@ -54,7 +54,10 @@ class StudentService
                 'X-API-KEY' => $this->apiKey
             ])->get($url);
 
-            dd($response->json());
+            return response()->json([
+                'status_code' => $response->status(),
+                'raw_body' => $response->body()
+            ]);
 
             $responseData = $response->json();
 
