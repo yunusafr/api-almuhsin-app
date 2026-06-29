@@ -15,7 +15,7 @@ return new class extends Migration
             $table->foreignUuid('invoice_id')->constrained('invoices')->cascadeOnDelete();
 
             // Relasi ke kasir/admin yang menerima pembayaran (Tabel users)
-            $table->foreignId('recorded_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUuid('recorded_by')->nullable()->constrained('users')->nullOnDelete();
 
             // Detail Pembayaran
             $table->string('payment_number')->unique(); // Nomor kuitansi (contoh: PAY-202606-001)
