@@ -20,7 +20,7 @@ class InvoiceResource extends JsonResource
             'id' => $this->id,
             'invoice_number' => $this->invoice_number,
 
-            // Format student dikembalikan persis seperti milik Anda sebelumnya
+            // Format student dikembalikan
             'student' => $this->whenLoaded('student', function () {
                 return [
                     'id' => $this->student->id,
@@ -30,10 +30,10 @@ class InvoiceResource extends JsonResource
 
             'total_amount' => (float) $this->total_amount,
 
-            // Saya ganti 'paid_amount' menjadi 'total_paid' hasil kalkulasi dinamis
-            'total_paid' => (float) $totalPaid,
+            // PERBAIKAN DI SINI: Gunakan variabel hasil hitung $totalPaid, BUKAN $this->paid_amount
+            'paid_amount' => (float) $totalPaid,
 
-            // INI FITUR BARUNYA: Sisa Tagihan
+            // PERBAIKAN DI SINI: Tambahkan sisa tagihan
             'remaining_amount' => (float) $remainingAmount,
 
             'status' => $this->status,
