@@ -20,6 +20,7 @@ class Student extends Model
         'guardian_phone',
         'rombel',
         'tingkat',
-        'status'
+        'status',
+        'balance'
     ];
 }
