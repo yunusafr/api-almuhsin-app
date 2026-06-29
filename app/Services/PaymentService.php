@@ -57,13 +57,19 @@ class PaymentService
                 'notes'            => $data['notes'] ?? null,
             ]);
 
-            // 7. Update status invoice berdasarkan total akumulasi pembayaran baru
+            // 7. Update status invoice DAN paid_amount secara bersamaan
             $newTotalPaid = $currentTotalPaid + $data['amount'];
 
             if ($newTotalPaid >= $invoice->total_amount) {
-                $invoice->update(['status' => 'PAID']);
+                $invoice->update([
+                    'status' => 'PAID',
+                    'paid_amount' => $newTotalPaid // <-- Update angka ke database
+                ]);
             } else {
-                $invoice->update(['status' => 'PARTIAL']);
+                $invoice->update([
+                    'status' => 'PARTIAL',
+                    'paid_amount' => $newTotalPaid // <-- Update angka ke database
+                ]);
             }
 
             return $payment;
