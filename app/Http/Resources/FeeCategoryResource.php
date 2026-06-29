@@ -1,23 +1,21 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Resources;
 
-use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 
-class FeeCategoryRequest extends FormRequest
+class FeeCategoryResource extends JsonResource
 {
-    public function authorize(): bool
-    {
-        return true; // Ubah jadi true agar request diizinkan
-    }
-
-    public function rules(): array
+    public function toArray(Request $request): array
     {
         return [
-            'name' => 'required|string|max:255',
-            'invoice_type' => 'required|in:SPP,DAFTAR_ULANG_BARU,DAFTAR_ULANG_LAMA,SPP_PKL,INSIDENTAL,TUNGGAKAN_LAMA',
-            'default_amount' => 'required|numeric|min:0',
-            'default_description' => 'nullable|string|max:255',
+            'id' => $this->id,
+            'name' => $this->name,
+            'invoice_type' => $this->invoice_type,
+            'default_amount' => $this->default_amount,
+            'default_description' => $this->default_description,
+            'created_at' => $this->created_at,
         ];
     }
 }
