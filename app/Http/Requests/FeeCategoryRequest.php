@@ -2,28 +2,22 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class FeeCategoryRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return true;
+        return true; // Ubah jadi true agar request diizinkan
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            //
+            'name' => 'required|string|max:255',
+            'invoice_type' => 'required|in:SPP,DAFTAR_ULANG_BARU,DAFTAR_ULANG_LAMA,SPP_PKL,INSIDENTAL,TUNGGAKAN_LAMA',
+            'default_amount' => 'required|numeric|min:0',
+            'default_description' => 'nullable|string|max:255',
         ];
     }
 }
