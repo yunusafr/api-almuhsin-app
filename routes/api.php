@@ -7,6 +7,7 @@ use App\Http\Controllers\API\StudentController;
 use App\Http\Controllers\API\ClassRoomController;
 use App\Http\Controllers\API\ClassEnrollmentController;
 use App\Http\Controllers\API\TeacherController;
+use App\Http\Controllers\API\FeeCategoryController;
 use App\Http\Controllers\API\InvoiceController;
 
 Route::prefix('v1')->group(function () {
@@ -39,7 +40,7 @@ Route::prefix('v1')->group(function () {
 
             Route::apiResource('teachers', TeacherController::class);
 
-
+            Route::apiResource('fee-categories', FeeCategoryController::class);
             Route::apiResource('invoices', InvoiceController::class)->only(['index', 'store', 'show', 'destroy']);
         });
     });
