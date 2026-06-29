@@ -20,8 +20,8 @@ class InvoiceController extends Controller
 
     public function index(Request $request)
     {
-        // Mengambil filter dari parameter URL, contoh: ?month=06&status=UNPAID
-        $filters = $request->only(['month', 'year', 'status']);
+        // PERBAIKAN: Tambahkan 'student_id' ke dalam array agar ditangkap oleh sistem
+        $filters = $request->only(['month', 'year', 'status', 'student_id']);
 
         $invoices = $this->service->getAll($filters);
 

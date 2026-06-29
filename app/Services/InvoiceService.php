@@ -11,16 +11,22 @@ class InvoiceService
 {
     public function getAll($filters = [])
     {
-        $query = Invoice::with(['student', 'items']);
+        // PERBAIKAN 1: Tambahkan 'payments' ke dalam fungsi with()
+        $query = Invoice::with(['student', 'items', 'payments']);
 
-        // 1. Filter Berdasarkan Bulan & Tahun (Default: Bulan & Tahun Saat Ini)
+        // Filter Berdasarkan Bulan & Tahun (Default: Bulan & Tahun Saat Ini)
         $month = $filters['month'] ?? date('m');
         $year = $filters['year'] ?? date('Y');
         $query->whereMonth('created_at', $month)->whereYear('created_at', $year);
 
-        // 2. Filter Berdasarkan Status jika di-request (misal: UNPAID saja)
+        // Filter Berdasarkan Status jika di-request
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
+        }
+
+        // PERBAIKAN 2: Tambahkan Filter khusus untuk mencari tagihan per Siswa
+        if (!empty($filters['student_id'])) {
+            $query->where('student_id', $filters['student_id']);
         }
 
         return $query->orderBy('created_at', 'desc')->get();
@@ -65,7 +71,8 @@ class InvoiceService
 
     public function findById($id)
     {
-        return Invoice::with(['student', 'items'])->findOrFail($id);
+        // PERBAIKAN 3: Tambahkan 'payments' di sini juga agar saat melihat detail, sisa tagihan bisa dihitung
+        return Invoice::with(['student', 'items', 'payments'])->findOrFail($id);
     }
 
     public function delete($id)
