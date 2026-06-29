@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\InvoiceRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Services\InvoiceService;
+use Illuminate\Http\Request;
 use Exception;
 
 class InvoiceController extends Controller
@@ -17,9 +18,13 @@ class InvoiceController extends Controller
         $this->service = $service;
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $invoices = $this->service->getAll();
+        // Mengambil filter dari parameter URL, contoh: ?month=06&status=UNPAID
+        $filters = $request->only(['month', 'year', 'status']);
+
+        $invoices = $this->service->getAll($filters);
+
         return response()->json([
             'success' => true,
             'data' => InvoiceResource::collection($invoices)
@@ -28,14 +33,12 @@ class InvoiceController extends Controller
 
     public function store(InvoiceRequest $request)
     {
-        $invoice = $this->service->create($request->validated());
-
-        // (Tempat trigger Queue Job Notifikasi WA nanti ditaruh di sini)
+        $invoices = $this->service->create($request->validated());
 
         return response()->json([
             'success' => true,
-            'message' => 'Tagihan berhasil dibuat!',
-            'data' => new InvoiceResource($invoice)
+            'message' => count($invoices) . ' Tagihan (Invoice) berhasil diterbitkan!',
+            'data' => InvoiceResource::collection(collect($invoices))
         ], 201);
     }
 
@@ -60,7 +63,7 @@ class InvoiceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
-            ], 400); // Bad Request
+            ], 400);
         }
     }
 }

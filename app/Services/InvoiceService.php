@@ -9,40 +9,57 @@ use Exception;
 
 class InvoiceService
 {
-    public function getAll()
+    public function getAll($filters = [])
     {
-        return Invoice::with(['student', 'items'])->orderBy('created_at', 'desc')->get();
+        $query = Invoice::with(['student', 'items']);
+
+        // 1. Filter Berdasarkan Bulan & Tahun (Default: Bulan & Tahun Saat Ini)
+        $month = $filters['month'] ?? date('m');
+        $year = $filters['year'] ?? date('Y');
+        $query->whereMonth('created_at', $month)->whereYear('created_at', $year);
+
+        // 2. Filter Berdasarkan Status jika di-request (misal: UNPAID saja)
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        return $query->orderBy('created_at', 'desc')->get();
     }
 
     public function create(array $data)
     {
         return DB::transaction(function () use ($data) {
-            // 1. Generate Nomor Invoice (Contoh: INV-20260629-ABCD)
-            $invoiceNumber = 'INV-' . date('Ymd') . '-' . strtoupper(Str::random(4));
+            $createdInvoices = [];
+            $datePart = date('Ymd');
 
-            // 2. Hitung total amount dari array items
-            $totalAmount = collect($data['items'])->sum('amount');
+            // Memproses looping data array invoice yang dikirim dari frontend
+            foreach ($data['invoices'] as $invoiceData) {
+                $invoiceNumber = 'INV-' . $datePart . '-' . strtoupper(Str::random(4));
+                $totalAmount = collect($invoiceData['items'])->sum('amount');
 
-            // 3. Buat Kepala Invoice
-            $invoice = Invoice::create([
-                'student_id' => $data['student_id'],
-                'invoice_number' => $invoiceNumber,
-                'total_amount' => $totalAmount,
-                'paid_amount' => 0,
-                'status' => 'UNPAID',
-                'due_date' => $data['due_date'],
-            ]);
-
-            // 4. Masukkan Rincian Items
-            foreach ($data['items'] as $item) {
-                $invoice->items()->create([
-                    'type' => $item['type'],
-                    'description' => $item['description'] ?? null,
-                    'amount' => $item['amount'],
+                // Buat Kepala Invoice
+                $invoice = Invoice::create([
+                    'student_id' => $invoiceData['student_id'],
+                    'invoice_number' => $invoiceNumber,
+                    'total_amount' => $totalAmount,
+                    'paid_amount' => 0,
+                    'status' => 'UNPAID',
+                    'due_date' => $invoiceData['due_date'],
                 ]);
+
+                // Buat Rincian Item Tagihan
+                foreach ($invoiceData['items'] as $item) {
+                    $invoice->items()->create([
+                        'type' => $item['type'],
+                        'description' => $item['description'] ?? null,
+                        'amount' => $item['amount'],
+                    ]);
+                }
+
+                $createdInvoices[] = $invoice->load(['student', 'items']);
             }
 
-            return $invoice->load(['student', 'items']);
+            return $createdInvoices;
         });
     }
 
@@ -55,9 +72,8 @@ class InvoiceService
     {
         $invoice = $this->findById($id);
 
-        // Validasi: Hanya tagihan UNPAID yang boleh dihapus
         if ($invoice->status !== 'UNPAID') {
-            throw new Exception('Gagal! Hanya tagihan yang belum dibayar sama sekali (UNPAID) yang bisa dihapus.');
+            throw new Exception('Gagal! Hanya tagihan yang belum dibayar (UNPAID) yang bisa dihapus.');
         }
 
         $invoice->delete();
