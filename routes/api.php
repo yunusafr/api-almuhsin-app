@@ -9,6 +9,7 @@ use App\Http\Controllers\API\ClassEnrollmentController;
 use App\Http\Controllers\API\TeacherController;
 use App\Http\Controllers\API\FeeCategoryController;
 use App\Http\Controllers\API\InvoiceController;
+use App\Http\Controllers\API\PaymentController;
 
 Route::prefix('v1')->group(function () {
     // Public routes
@@ -42,6 +43,9 @@ Route::prefix('v1')->group(function () {
 
             Route::apiResource('fee-categories', FeeCategoryController::class);
             Route::apiResource('invoices', InvoiceController::class)->only(['index', 'store', 'show', 'destroy']);
+
+            Route::post('payments', [PaymentController::class, 'store']);
+            Route::get('payments/invoice/{invoice_id}', [PaymentController::class, 'show']);
         });
     });
 });
