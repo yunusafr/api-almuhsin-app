@@ -12,14 +12,31 @@ class StudentService
     protected $externalBaseUrl = 'https://induk.ingintau.my.id';
     protected $apiKey = 'TUsmekisa1968';
 
-    public function getAll($status = null)
+    public function getAll(array $filters = [])
     {
         // Panggil query builder dari model Student
         $query = Student::query();
 
-        // Jika variabel $status ada isinya (misal: 'aktif'), tambahkan filter where
-        if ($status) {
-            $query->where('status', $status);
+        // Filter berdasarkan status
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        // Pencarian Individu (berdasarkan nama atau NIS)
+        if (!empty($filters['search'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('name', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('nis', 'like', '%' . $filters['search'] . '%');
+            });
+        }
+
+        // Filter Rombongan/Masal (berdasarkan rombel atau tingkat)
+        if (!empty($filters['rombel'])) {
+            $query->where('rombel', $filters['rombel']);
+        }
+
+        if (!empty($filters['tingkat'])) {
+            $query->where('tingkat', $filters['tingkat']);
         }
 
         // Lanjutkan dengan order by dan get

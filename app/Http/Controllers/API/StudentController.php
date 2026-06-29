@@ -19,11 +19,11 @@ class StudentController extends Controller
 
     public function index(\Illuminate\Http\Request $request)
     {
-        // Tangkap query parameter 'status' dari URL
-        $status = $request->query('status');
+        // Tangkap beberapa query parameter sekaligus
+        $filters = $request->only(['status', 'search', 'rombel', 'tingkat']);
 
-        // Lempar variabel status ke dalam service
-        $students = $this->service->getAll($status);
+        // Lempar array filters ke dalam service
+        $students = $this->service->getAll($filters);
 
         return response()->json([
             'success' => true,
