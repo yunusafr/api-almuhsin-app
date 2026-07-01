@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Exception;
 
 class PaymentService
@@ -13,170 +14,92 @@ class PaymentService
     public function processPayment(array $data)
     {
         return DB::transaction(function () use ($data) {
-            // Ambil data invoice beserta data siswanya
+            // 1. Ambil data invoice beserta data siswanya dengan lock agar aman dari race condition
             $invoice = Invoice::with('student')->lockForUpdate()->findOrFail($data['invoice_id']);
+            $student = $invoice->student;
 
+            // Jika tagihan sudah lunas, tolak pembayaran
+            if ($invoice->status === 'PAID') {
+                throw new Exception('Gagal! Tagihan ini sudah berstatus LUNAS (PAID).');
+            }
+
+            // 2. Hitung sisa tagihan aktual saat ini
             $currentTotalPaid = $invoice->payments()->sum('amount');
             $remainingBill = $invoice->total_amount - $currentTotalPaid;
 
-            // ================================================================
-            // LOGIKA BARU: ATUR ALOKASI DANA SECARA OTOMATIS
-            // ================================================================
-            $paidForInvoice = $data['amount'];
+            $paymentMethod = strtoupper($data['payment_method']);
+            $inputAmount = $data['amount'];
+
+            $paidForInvoice = 0;
             $excessAmount = 0;
 
-            if ($remainingBill <= 0 || $invoice->status === 'PAID') {
-                // KASUS 1: Jika invoice SUDAH LUNAS, maka tidak ada uang yang masuk ke invoice.
-                // 100% Uang yang dibayarkan dialihkan menjadi SALDO SISWA.
-                $paidForInvoice = 0;
-                $excessAmount = $data['amount'];
-            } else if ($data['amount'] > $remainingBill) {
-                // KASUS 2: Jika invoice BELUM LUNAS tapi bayarnya LEBIH,
-                // Ambil uang pas untuk melunasi invoice, sisanya jadi saldo.
-                $paidForInvoice = $remainingBill;
-                $excessAmount = $data['amount'] - $remainingBill;
+            // ================================================================
+            // ALUR A: JIKA BAYAR MENGGUNAKAN SALDO / DEPOSIT SISWA (Sesuai Poin 5)
+            // ================================================================
+            if ($paymentMethod === 'SALDO') {
+                // Pastikan saldo siswa mencukupi nominal yang ingin dibayarkan
+                if ($student->balance < $inputAmount) {
+                    throw new Exception('Gagal! Saldo/Deposit siswa tidak mencukupi. Saldo saat ini: Rp ' . number_format($student->balance, 0, ',', '.'));
+                }
+
+                // Jika input bayar melebihi sisa tagihan, kita batasi senilai sisa tagihan saja
+                $paidForInvoice = min($inputAmount, $remainingBill);
+
+                // Potong saldo siswa sesuai yang benar-benar digunakan untuk bayar invoice
+                $student->decrement('balance', $paidForInvoice);
+                $excessAmount = 0;
+            }
+            // ================================================================
+            // ALUR B: JIKA BAYAR TUNAI / TRANSFER / METODE EKSTERNAL LAINNYA
+            // ================================================================
+            else {
+                if ($inputAmount > $remainingBill) {
+                    // Jika bayar lebih, invoice dilunasi sesuai sisa tagihan, sisa uang masuk ke saldo
+                    $paidForInvoice = $remainingBill;
+                    $excessAmount = $inputAmount - $remainingBill;
+
+                    // Masukkan ke saldo deposit siswa (Sesuai Poin 5)
+                    $student->increment('balance', $excessAmount);
+                } else {
+                    // Pembayaran pas atau kurang / cicilan (Sesuai Poin 5)
+                    $paidForInvoice = $inputAmount;
+                    $excessAmount = 0;
+                }
             }
 
-            // Generate nomor kuitansi otomatis (Contoh: PAY-202606-0001)
-            $datePrefix = 'PAY-' . date('Ym');
-            $lastPayment = \App\Models\Payment::where('payment_number', 'like', $datePrefix . '%')
-                ->orderBy('payment_number', 'desc')
-                ->first();
+            // 3. Buat nomor kuitansi otomatis
+            $paymentNumber = 'PAY-' . date('Ymd') . '-' . strtoupper(Str::random(6));
 
-            $newNumber = $lastPayment ? (intval(substr($lastPayment->payment_number, -4)) + 1) : 1;
-            $paymentNumber = $datePrefix . '-' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
-
-            // Tambahkan catatan otomatis di kuitansi agar kasir/orang tua tidak bingung
-            $notes = $data['notes'] ?? null;
-            if ($paidForInvoice === 0) {
-                $notes = trim(($notes ? $notes . ' | ' : '') . 'Uang dialihkan ke saldo karena tagihan ini sudah lunas sebelumnya.');
-            } else if ($excessAmount > 0) {
-                $notes = trim(($notes ? $notes . ' | ' : '') . 'Kelebihan bayar Rp ' . number_format($excessAmount, 0, ',', '.') . ' masuk ke saldo.');
+            // Tambahkan keterangan otomatis di kuitansi
+            $notes = $data['notes'] ?? '';
+            if ($excessAmount > 0) {
+                $notes .= " (Kelebihan Rp " . number_format($excessAmount, 0, ',', '.') . " otomatis masuk ke saldo siswa)";
+            }
+            if ($paymentMethod === 'SALDO') {
+                $notes .= " (Dibayar menggunakan Saldo/Deposit siswa)";
             }
 
-            // Simpan data pembayaran ke tabel payments
-            $payment = \App\Models\Payment::create([
+            // 4. Simpan riwayat pembayaran ke database
+            $payment = Payment::create([
                 'invoice_id'       => $invoice->id,
-                'recorded_by'      => \Illuminate\Support\Facades\Auth::id(),
+                'recorded_by'      => Auth::id(), // ID Bendahara yang sedang login
                 'payment_number'   => $paymentNumber,
-                'amount'           => $paidForInvoice, // Nominal masuk invoice (bisa 0 jika sudah lunas)
+                'amount'           => $paidForInvoice,
                 'payment_date'     => $data['payment_date'],
-                'payment_method'   => $data['payment_method'],
+                'payment_method'   => $paymentMethod,
                 'reference_number' => $data['reference_number'] ?? null,
-                'notes'            => $notes,
+                'notes'            => trim($notes),
             ]);
 
-            // Update status & nominal terbayar di tabel invoices (HANYA jika invoice belum lunas)
-            if ($remainingBill > 0 && $invoice->status !== 'PAID') {
-                $newTotalPaid = $currentTotalPaid + $paidForInvoice;
-                $invoice->update([
-                    'status'      => $newTotalPaid >= $invoice->total_amount ? 'PAID' : 'PARTIAL',
-                    'paid_amount' => $newTotalPaid
-                ]);
-            }
+            // 5. Update status dan paid_amount pada kepala invoice
+            $newTotalPaid = $currentTotalPaid + $paidForInvoice;
+            $invoice->update([
+                'paid_amount' => $newTotalPaid,
+                'status'      => $newTotalPaid >= $invoice->total_amount ? 'PAID' : 'PARTIAL',
+            ]);
 
-            // ================================================================
-            // EKSEKUSI PENAMBAHAN SALDO SISWA (JIKA ADA KELEBIHAN)
-            // ================================================================
-            if ($excessAmount > 0) {
-                $invoice->student->increment('balance', $excessAmount);
-            }
-
-            return $payment;
-        });
-    }
-
-    public function processMultiPayment(array $data)
-    {
-        return DB::transaction(function () use ($data) {
-            // $data['invoice_ids'] berupa array contoh: ["uuid-1", "uuid-2"]
-            $invoiceIds = $data['invoice_ids'];
-            $totalCashReceived = $data['amount']; // Total uang fisik yang diterima kasir
-
-            // Ambil semua invoice yang di-request, urutkan berdasarkan tanggal dibuat (tertua dulu)
-            $invoices = Invoice::with('student')
-                ->whereIn('id', $invoiceIds)
-                ->orderBy('created_at', 'asc')
-                ->lockForUpdate()
-                ->get();
-
-            if ($invoices->isEmpty()) {
-                throw new Exception("Tidak ada data tagihan yang valid.");
-            }
-
-            // Ambil data siswa dari invoice pertama (semua invoice pasti miliki siswa yang sama)
-            $student = $invoices->first()->student;
-            $remainingMoney = $totalCashReceived;
-            $paymentsCreated = [];
-
-            foreach ($invoices as $invoice) {
-                // Jika uang kasir sudah habis, stop looping invoice selanjutnya
-                if ($remainingMoney <= 0) {
-                    break;
-                }
-
-                $currentTotalPaid = $invoice->payments()->sum('amount');
-                $remainingBill = $invoice->total_amount - $currentTotalPaid;
-
-                // Jika invoice ini ternyata sudah lunas, lewati ke invoice berikutnya
-                if ($remainingBill <= 0 || $invoice->status === 'PAID') {
-                    continue;
-                }
-
-                // Tentukan berapa nominal yang akan dialokasikan untuk invoice ini
-                $paidForInvoice = 0;
-                if ($remainingMoney >= $remainingBill) {
-                    $paidForInvoice = $remainingBill; // Uang cukup/lebih untuk melunasi invoice ini
-                    $remainingMoney -= $remainingBill; // Kurangi sisa uang kasir
-                } else {
-                    $paidForInvoice = $remainingMoney; // Uang sisa kasir hanya cukup untuk mencicil
-                    $remainingMoney = 0; // Uang kasir habis
-                }
-
-                // Generate nomor kuitansi unik untuk tiap invoice
-                $datePrefix = 'PAY-' . date('Ym');
-                $lastPayment = \App\Models\Payment::where('payment_number', 'like', $datePrefix . '%')
-                    ->orderBy('payment_number', 'desc')
-                    ->first();
-                $newNumber = $lastPayment ? (intval(substr($lastPayment->payment_number, -4)) + 1) : 1;
-                $paymentNumber = $datePrefix . '-' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
-
-                // Buat data pembayaran kuitansi
-                $payment = \App\Models\Payment::create([
-                    'invoice_id'       => $invoice->id,
-                    'recorded_by'      => \Illuminate\Support\Facades\Auth::id(),
-                    'payment_number'   => $paymentNumber,
-                    'amount'           => $paidForInvoice,
-                    'payment_date'     => $data['payment_date'],
-                    'payment_method'   => $data['payment_method'],
-                    'reference_number' => $data['reference_number'] ?? null,
-                    'notes'            => ($data['notes'] ?? '') . " (Pembayaran Multi-Tagihan)",
-                ]);
-
-                // Update Invoice
-                $newTotalPaid = $currentTotalPaid + $paidForInvoice;
-                $invoice->update([
-                    'status'      => $newTotalPaid >= $invoice->total_amount ? 'PAID' : 'PARTIAL',
-                    'paid_amount' => $newTotalPaid
-                ]);
-
-                $paymentsCreated[] = $payment;
-            }
-
-            // ================================================================
-            // JIKA SEMUA INVOICE SUDAH DI-LOOP DAN MASIH ADA SISA UANG
-            // MASUKKAN SISA AKHIRNYA KE SALDO DEPOSIT SISWA
-            // ================================================================
-            if ($remainingMoney > 0) {
-                $student->increment('balance', $remainingMoney);
-
-                // Opsional: Buat kuitansi dummy/catatan khusus saldo jika diperlukan
-            }
-
-            return [
-                'payments' => $paymentsCreated,
-                'excess_to_balance' => $remainingMoney
-            ];
+            // Mengembalikan object payment utuh agar tidak crash di Controller
+            return $payment->load('invoice');
         });
     }
 

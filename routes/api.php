@@ -21,29 +21,23 @@ Route::prefix('v1')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::post('/refresh', [AuthController::class, 'refresh']);
 
-        // --- AREA SUPER ADMIN ---
+        // --- AREA SUPER ADMIN (Data Akademik & Master Siswa) ---
         Route::middleware(['role:Super Admin'])->group(function () {
-            // Academic Years Routes
-
             Route::get('academic-years/active', [AcademicYearController::class, 'getActive']);
             Route::apiResource('academic-years', AcademicYearController::class);
-
-            // Student Routes
             Route::get('students/external-search', [StudentController::class, 'searchExternal']);
             Route::post('students/external-pull', [StudentController::class, 'pullExternal']);
             Route::post('students/external-sync', [StudentController::class, 'sync']);
-            Route::apiResource('students', StudentController::class); // CRUD Manual
-
-            // Class Routes
+            Route::apiResource('students', StudentController::class);
             Route::apiResource('classes', ClassRoomController::class)->parameters(['classes' => 'classRoom']);
             Route::apiResource('enrollments', ClassEnrollmentController::class);
-
-
             Route::apiResource('teachers', TeacherController::class);
+        });
 
+        // --- AREA BENDAHARA (Sesuai Poin 1: Khusus Keuangan) ---
+        Route::middleware(['role:Bendahara'])->group(function () {
             Route::apiResource('fee-categories', FeeCategoryController::class);
             Route::apiResource('invoices', InvoiceController::class)->only(['index', 'store', 'show', 'destroy']);
-
             Route::post('payments', [PaymentController::class, 'store']);
             Route::get('payments/invoice/{invoice_id}', [PaymentController::class, 'show']);
         });

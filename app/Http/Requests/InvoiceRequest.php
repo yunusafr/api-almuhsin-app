@@ -14,16 +14,16 @@ class InvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Menerima pembungkus utama bernama 'invoices' (array)
+            // Mendukung penerbitan masal di awal bulan (Poin 3)
             'invoices' => 'required|array|min:1',
             'invoices.*.student_id' => 'required|uuid|exists:students,id',
             'invoices.*.due_date' => 'required|date',
 
-            // Item tagihan kustom per siswa
+            // Validasi tipe item tagihan yang disesuaikan
             'invoices.*.items' => 'required|array|min:1',
-            'invoices.*.items.*.type' => 'required|in:SPP,DAFTAR_ULANG_BARU,DAFTAR_ULANG_LAMA,SPP_PKL,INSIDENTAL,TUNGGAKAN_LAMA',
+            'invoices.*.items.*.type' => 'required|in:SPP_NORMAL,SPP_PKL,SPP_BEASISWA,DAFTAR_ULANG_BARU,DAFTAR_ULANG_LAMA,INSIDENTAL,LAINNYA',
             'invoices.*.items.*.description' => 'nullable|string|max:255',
-            'invoices.*.items.*.amount' => 'required|numeric|min:0', // min:0 untuk mengakomodasi "SPP nominal 0"
+            'invoices.*.items.*.amount' => 'required|numeric|min:0',
         ];
     }
 }
